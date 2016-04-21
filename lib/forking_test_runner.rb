@@ -3,7 +3,42 @@ require 'benchmark'
 module ForkingTestRunner
   CLEAR = "------"
 
+  module CoverageCapture
+    def self.extended(base)
+      # base.class_eval do
+      #   alias_method :result_without_restore, :result
+      #
+      #   # override to add pre-fork captured coverage when someone asks for the results
+      #   def result
+      #     original = result_without_restore
+      #
+      #     if @capture_coverage
+      #       @capture_coverage.each do |file, coverage|
+      #         if orig = original[file]
+      #           merge_coverage!(coverage, orig)
+      #         else
+      #           orig[file] = coverage
+      #         end
+      #       end
+      #     end
+      #
+      #     original
+      #   end
+      # end
+    end
+
+    # [nil,1,0] + [nil,nil,2] -> [nil,1,2]
+    def merge_coverage(a,b)
+      b.map! do |b_count|
+        a_count = a.shift
+        (!b_count && !a_count) ? nil : b_count.to_i + a_count.to_i
+      end
+    end
+  end
+
   class << self
+    attr_accessor :restore_coverage
+
     def cli(argv)
       @rspec = delete_argv("--rspec", argv, arg: false)
       @no_fixtures = delete_argv("--no-fixtures", argv, arg: false)
@@ -24,6 +59,12 @@ module ForkingTestRunner
         puts "Running #{tests.size} test files"
       else
         puts "Running tests #{tests.map(&:first).join(" ")}"
+      end
+
+      if restore_coverage
+        # Coverage.extend CoverageCapture
+        !!Coverage.result
+        Coverage.start
       end
 
       # run all the tests

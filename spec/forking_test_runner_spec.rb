@@ -110,6 +110,13 @@ describe ForkingTestRunner do
     result.should include "AR IS UNDEFINED"
   end
 
+  it "can keep coverage across forks" do
+    result = with_env "COVERAGE" => "1" do
+      runner("test/coverage.rb")
+    end
+    result.should include "preloaded: [1,1,1,1]"
+  end
+
   describe "quiet mode" do
     it "does not print test output" do
       result = runner("test --quiet")
